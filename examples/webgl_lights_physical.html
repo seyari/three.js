@@ -14,6 +14,7 @@
 			Real world scale: Brick cube is 50 cm in size. Globe is 50 cm in diameter.<br/>
 			Reinhard inline tonemapping with real-world light falloff (decay = 2).
 		</div>
+		<div id="cct"></div>
 
 		<script type="module">
 
@@ -56,11 +57,23 @@
 				"50000 lx (Direct Sun)": 50000
 			};
 
+			function cct_to_rgb(cct) {
+				const cct2700k = 0xffa957;
+				const cct6500k = 0xfff9fd;
+
+				let g = Math.round(99.4708025861 * Math.log(cct/100) - 161.1195681661);
+				let b = Math.round(138.5177312231 * Math.log(cct / 100 - 10) - 305.0447927307);
+
+				return (0xff0000 + g * 0x100 + b);
+			}
+
 			var params = {
 				shadows: true,
 				exposure: 0.68,
 				bulbPower: Object.keys( bulbLuminousPowers )[ 4 ],
-				hemiIrradiance: Object.keys( hemiLuminousIrradiances )[ 0 ]
+				hemiIrradiance: Object.keys( hemiLuminousIrradiances )[ 0 ],
+				CCT: 2700,
+				anime: false,
 			};
 
 			init();
@@ -82,12 +95,12 @@
 				scene = new THREE.Scene();
 
 				var bulbGeometry = new THREE.SphereBufferGeometry( 0.02, 16, 8 );
-				bulbLight = new THREE.PointLight( 0xffee88, 1, 100, 2 );
+				bulbLight = new THREE.PointLight( cct_to_rgb(params.CCT), 1, 100, 2 );
 
 				bulbMat = new THREE.MeshStandardMaterial( {
-					emissive: 0xffffee,
+					emissive: cct_to_rgb(params.CCT),
 					emissiveIntensity: 1,
-					color: 0x000000
+					color: cct_to_rgb(params.CCT)
 				} );
 				bulbLight.add( new THREE.Mesh( bulbGeometry, bulbMat ) );
 				bulbLight.position.set( 0, 2, 0 );
@@ -234,6 +247,8 @@
 				gui.add( params, 'bulbPower', Object.keys( bulbLuminousPowers ) );
 				gui.add( params, 'exposure', 0, 1 );
 				gui.add( params, 'shadows' );
+				gui.add( params, 'CCT', 2700, 6500 );
+				gui.add( params, 'anime' );
 				gui.open();
 
 }
@@ -276,9 +291,12 @@
 				bulbMat.emissiveIntensity = bulbLight.intensity / Math.pow( 0.02, 2.0 ); // convert from intensity to irradiance at bulb surface
 
 				hemiLight.intensity = hemiLuminousIrradiances[ params.hemiIrradiance ];
-				var time = Date.now() * 0.0005;
 
-				bulbLight.position.y = Math.cos( time ) * 0.75 + 1.25;
+				if (params.anime) {
+					var time = Date.now() * 0.0005;
+					bulbLight.position.y = Math.cos( time ) * 0.75 + 1.25;
+				}
+				bulbLight.color = new THREE.Color(cct_to_rgb(params.CCT));
 
 				renderer.render( scene, camera );
 
