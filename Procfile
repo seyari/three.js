@@ -1,1 +1,1 @@
-web: npm run dev
+web: python3 -m http.server 80
